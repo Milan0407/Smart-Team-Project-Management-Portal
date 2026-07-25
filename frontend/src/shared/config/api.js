@@ -1,8 +1,14 @@
-const trimTrailingSlash = (value) => value?.replace(/\/+$/, "");
+const trimTrailingSlash = (value) => value?.trim().replace(/\/+$/, "") || "";
 
-export const API_BASE_URL = trimTrailingSlash(
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
-);
+const getApiBaseUrl = () => {
+  let url = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api");
+  if (url && !url.endsWith("/api")) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const SOCKET_URL = trimTrailingSlash(
   import.meta.env.VITE_SOCKET_URL || "http://localhost:5000"

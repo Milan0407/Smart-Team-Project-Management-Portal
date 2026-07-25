@@ -89,6 +89,13 @@ app.use(morgan("dev"));
 // Static serving for attachments
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Smart Team Project Management Portal API is running",
+  });
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
