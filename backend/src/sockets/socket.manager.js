@@ -2,6 +2,7 @@ const { Server } = require("socket.io");
 const socketAuthMiddleware = require("./socketAuth.middleware");
 const projectRepository = require("../modules/project/repositories/project.repository");
 const logger = require("../config/logger");
+const { socketCorsOptions } = require("../config/security");
 
 const toIdString = (value) => {
   if (!value) return null;
@@ -15,10 +16,7 @@ class SocketManager {
 
   initialize(server) {
     this.io = new Server(server, {
-      cors: {
-        origin: true, // Allow all origins for development, same as cors middleware
-        credentials: true,
-      },
+      cors: socketCorsOptions,
     });
 
     // Attach authentication middleware

@@ -386,12 +386,12 @@ http://localhost:5173
 | `JWT_ACCESS_SECRET` | Secret for access tokens |
 | `JWT_REFRESH_SECRET` | Secret for refresh/session tokens |
 | `CLIENT_URL` | Frontend URL for CORS and generated links |
-| `SMTP_HOST` | SMTP host for email |
-| `SMTP_PORT` | SMTP port |
-| `SMTP_SECURE` | Whether SMTP uses secure connection |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
-| `SMTP_FROM` | Sender email address |
+| `SMTP_HOST` | Required SMTP host for email (Gmail: `smtp.gmail.com`) |
+| `SMTP_PORT` | SMTP port (`587` for STARTTLS or `465` for SSL) |
+| `SMTP_SECURE` | `false` for port `587`; `true` for port `465` |
+| `SMTP_USER` | Required SMTP account username, usually the full email address |
+| `SMTP_PASS` | Required SMTP password or provider app password (never commit it) |
+| `SMTP_FROM` | Required sender, such as `Smart Portal <account@example.com>` |
 
 ### Frontend
 
@@ -494,12 +494,12 @@ MONGODB_URI=your_mongodb_atlas_uri
 JWT_ACCESS_SECRET=your_production_access_secret
 JWT_REFRESH_SECRET=your_production_refresh_secret
 CLIENT_URL=https://your-vercel-frontend.vercel.app
-SMTP_HOST=optional
-SMTP_PORT=optional
-SMTP_SECURE=optional
-SMTP_USER=optional
-SMTP_PASS=optional
-SMTP_FROM=optional
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-sender@gmail.com
+SMTP_PASS=your-google-app-password
+SMTP_FROM="Smart Portal <your-sender@gmail.com>"
 ```
 
 After deployment, Render will provide a backend URL similar to:
@@ -527,7 +527,7 @@ VITE_API_BASE_URL=https://your-render-backend.onrender.com/api
 VITE_SOCKET_URL=https://your-render-backend.onrender.com
 ```
 
-After the frontend URL is available, update backend `CLIENT_URL` on Render.
+After the frontend URL is available, update backend `CLIENT_URL` and `CLIENT_URLS` on Render. Configure SMTP variables on the backend host; Vercel frontend variables do not configure email. For Gmail, use a Google App Password with 2-Step Verification enabled, not the normal account password.
 
 ## Testing Checklist
 

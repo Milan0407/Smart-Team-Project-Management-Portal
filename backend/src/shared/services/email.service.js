@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
 const logger = require("../../config/logger");
 const env = require("../../config/env");
+const AppError = require("../errors/AppError");
 
 const transporter = nodemailer.createTransport({
   host: env.smtpHost,
@@ -10,6 +11,9 @@ const transporter = nodemailer.createTransport({
     user: env.smtpUser,
     pass: env.smtpPass,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
 });
 
 function getBaseHtml(title, body, buttonText, buttonLink) {
@@ -67,21 +71,21 @@ class EmailService {
     console.log(`Subject: ${subject}`);
     console.log("========================================\n");
 
-    if (env.smtpUser && env.smtpPass) {
-      try {
-        const info = await transporter.sendMail({
-          from: env.smtpFrom,
-          to,
-          subject,
-          html,
-        });
-        logger.info(`Email successfully delivered to ${to} via SMTP. Message ID: ${info.messageId}`);
-        return info;
-      } catch (err) {
-        logger.error(`Failed to send email via SMTP to ${to}: ${err.message}`);
-      }
+    if (!env.smtpHost || !env.smtpUser || !env.smtpPass) {
+      throw new AppError(
+        "Email is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS, and SMTP_FROM on the backend.",
+        503
+      );
     }
-    return null;
+
+    try {
+      const info = await transporter.sendMail({ from: env.smtpFrom, to, subject, html });
+      logger.info(`Email accepted by SMTP for ${to}. Message ID: ${info.messageId}`);
+      return info;
+    } catch (err) {
+      logger.error(`Failed to send email via SMTP to ${to}: ${err.message}`);
+      throw new AppError("Email could not be sent. Check the backend SMTP settings and try again.", 502);
+    }
   }
 
   async sendInviteEmail(email, orgName, role, inviteLink) {

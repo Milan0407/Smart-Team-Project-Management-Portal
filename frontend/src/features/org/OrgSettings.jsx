@@ -136,7 +136,12 @@ const OrgSettings = () => {
         refetchInvites();
       }
     } catch (err) {
-      setActionError(err?.data?.message || "Failed to invite email");
+      setActionError(
+        err?.data?.message ||
+        (err?.status === "FETCH_ERROR"
+          ? "Could not reach the server. Check the backend URL and try again."
+          : "Failed to send the invitation. Please try again.")
+      );
     }
   };
 

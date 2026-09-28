@@ -23,6 +23,10 @@ const env = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
 
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
+  clientUrls: (process.env.CLIENT_URLS || process.env.CLIENT_URL || "http://localhost:5173")
+    .split(",")
+    .map((url) => url.trim().replace(/\/+$/, ""))
+    .filter(Boolean),
 
   smtpHost: process.env.SMTP_HOST || "smtp.ethereal.email",
   smtpPort: parseInt(process.env.SMTP_PORT || "587", 10),

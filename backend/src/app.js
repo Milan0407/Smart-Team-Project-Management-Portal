@@ -5,6 +5,9 @@ const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const path = require("path");
+const env = require("./config/env");
+const { corsOptions } = require("./config/security");
+const rateLimit = require("./shared/middleware/rateLimit.middleware");
 
 const notFound = require("./shared/middleware/notFound");
 const errorHandler = require("./shared/middleware/errorHandler");
@@ -69,22 +72,19 @@ const app = express();
 
 app.use(helmet());
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 app.use(compression());
 
 app.use(cookieParser());
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-app.use(morgan("dev"));
+if (env.nodeEnv !== "test") {
+  app.use(morgan("dev"));
+}
 
 // Static serving for attachments
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
@@ -106,6 +106,11 @@ app.get("/health", (req, res) => {
 
 app.use(
   "/api/auth",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: "Too many auth requests. Please wait and try again.",
+  }),
   authRoutes
 );
 

@@ -304,14 +304,11 @@ class OrganizationService {
       }
     }
 
-    // Cancel any existing pending invitation for this email in this org
-    await Invitation.deleteMany({ orgId, email: normalizedEmail, status: "pending" });
-
     // Generate token and expiry (7 days)
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    const invitation = await Invitation.create({
+    const invitation = new Invitation({
       orgId,
       email: normalizedEmail,
       role,
@@ -320,11 +317,11 @@ class OrganizationService {
       expiresAt,
     });
 
-    // Send email (simulated & SMTP if configured)
     const inviteLink = `${getClientUrl()}/accept-invite?token=${token}`;
     await emailService.sendInviteEmail(normalizedEmail, organization.name, role, inviteLink);
 
-    return invitation;
+    await Invitation.deleteMany({ orgId, email: normalizedEmail, status: "pending" });
+    return invitation.save();
   }
 
   async acceptInvitation(token, userId) {
