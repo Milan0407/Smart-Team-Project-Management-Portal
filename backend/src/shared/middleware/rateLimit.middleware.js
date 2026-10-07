@@ -12,10 +12,12 @@ const rateLimit = ({
   windowMs = 15 * 60 * 1000,
   max = 100,
   message = "Too many requests. Please try again later.",
+  keyPrefix = "global",
+  keyGenerator = getClientKey,
 } = {}) => {
   return (req, res, next) => {
     const now = Date.now();
-    const key = getClientKey(req);
+    const key = `${keyPrefix}:${keyGenerator(req)}`;
     const record = buckets.get(key);
 
     if (!record || record.expiresAt <= now) {

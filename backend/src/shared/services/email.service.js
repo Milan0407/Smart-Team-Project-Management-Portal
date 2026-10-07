@@ -102,6 +102,36 @@ class EmailService {
     });
   }
 
+  async sendRegisterOtpEmail(email, otp) {
+    const title = "Verify your email address";
+    const body = `<p>Hi there,</p>
+                  <p>Use this one-time code to finish creating your Smart Portal account:</p>
+                  <p style="font-size: 28px; letter-spacing: 8px; font-weight: 800; color: #2563eb; margin: 24px 0;">${otp}</p>
+                  <p>This code expires in 10 minutes. If you did not request it, you can safely ignore this email.</p>`;
+
+    const html = getBaseHtml(title, body);
+    return this.sendMail({
+      to: email,
+      subject: "Your Smart Portal verification code",
+      html,
+    });
+  }
+
+  async sendLoginOtpEmail(email, otp) {
+    const title = "Your login verification code";
+    const body = `<p>Hi there,</p>
+                  <p>Use this one-time code to sign in to your Smart Portal account:</p>
+                  <p style="font-size: 28px; letter-spacing: 8px; font-weight: 800; color: #2563eb; margin: 24px 0;">${otp}</p>
+                  <p>This code expires in 10 minutes. If you did not request it, please secure your account.</p>`;
+
+    const html = getBaseHtml(title, body);
+    return this.sendMail({
+      to: email,
+      subject: "Your Smart Portal login code",
+      html,
+    });
+  }
+
   async sendTaskAssignmentEmail(email, userName, taskTitle, projectTitle, link) {
     const title = `New Task Assigned: ${taskTitle}`;
     const body = `<p>Hi ${userName || "there"},</p>

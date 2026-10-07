@@ -22,7 +22,8 @@ The project is built as a MERN-style application with a React/Vite frontend, an 
 
 ### Authentication and Access
 
-- User registration and login
+- User registration with email OTP verification
+- Login with password or email OTP verification
 - JWT-based authentication
 - Protected frontend routes
 - Session handling and logout flow
@@ -99,6 +100,7 @@ The project is built as a MERN-style application with a React/Vite frontend, an 
 - Notification center
 - Activity feed for workspace changes
 - Email notification service support through SMTP configuration
+- Brevo-compatible SMTP setup for OTP, invitations, and email notifications
 
 ## Tech Stack
 
@@ -242,9 +244,10 @@ Frontend Socket.IO Client
 
 ### 1. User Starts
 
-1. Register or login.
-2. User is authenticated with JWT.
-3. Protected routes become available.
+1. Register with full name, email, password, and an email OTP.
+2. Login with either password or email OTP.
+3. User is authenticated with JWT.
+4. Protected routes become available.
 
 ### 2. Organization Workspace
 
@@ -333,6 +336,7 @@ MONGODB_URI=your_mongodb_connection_string
 JWT_ACCESS_SECRET=your_access_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 CLIENT_URL=http://localhost:5173
+CLIENT_URLS=http://localhost:5173
 SMTP_HOST=
 SMTP_PORT=
 SMTP_SECURE=
@@ -340,6 +344,19 @@ SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=
 ```
+
+For Brevo SMTP, use the SMTP credentials from Brevo's **SMTP & API** page:
+
+```env
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_brevo_smtp_login
+SMTP_PASS=your_brevo_smtp_key
+SMTP_FROM="Smart Portal" <your_verified_sender_email>
+```
+
+`SMTP_USER` must be Brevo's SMTP login, often ending with `@smtp-brevo.com`. It is not always the same as the verified sender email.
 
 ### 4. Start Backend
 
@@ -386,12 +403,20 @@ http://localhost:5173
 | `JWT_ACCESS_SECRET` | Secret for access tokens |
 | `JWT_REFRESH_SECRET` | Secret for refresh/session tokens |
 | `CLIENT_URL` | Frontend URL for CORS and generated links |
-| `SMTP_HOST` | Required SMTP host for email (Gmail: `smtp.gmail.com`) |
+| `CLIENT_URLS` | Comma-separated frontend origins allowed by CORS |
+| `SMTP_HOST` | Required SMTP host for email, for example Brevo `smtp-relay.brevo.com` |
 | `SMTP_PORT` | SMTP port (`587` for STARTTLS or `465` for SSL) |
 | `SMTP_SECURE` | `false` for port `587`; `true` for port `465` |
-| `SMTP_USER` | Required SMTP account username, usually the full email address |
+| `SMTP_USER` | Required SMTP account username; for Brevo use the SMTP login from Brevo |
 | `SMTP_PASS` | Required SMTP password or provider app password (never commit it) |
 | `SMTP_FROM` | Required sender, such as `Smart Portal <account@example.com>` |
+
+Email is required for:
+
+- Signup OTP verification
+- Login OTP verification
+- Organization invitations
+- Task, comment, wiki, and deadline notification emails
 
 ### Frontend
 
@@ -494,12 +519,24 @@ MONGODB_URI=your_mongodb_atlas_uri
 JWT_ACCESS_SECRET=your_production_access_secret
 JWT_REFRESH_SECRET=your_production_refresh_secret
 CLIENT_URL=https://your-vercel-frontend.vercel.app
+CLIENT_URLS=https://your-vercel-frontend.vercel.app
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-sender@gmail.com
 SMTP_PASS=your-google-app-password
 SMTP_FROM="Smart Portal <your-sender@gmail.com>"
+```
+
+Brevo example:
+
+```env
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_brevo_smtp_login
+SMTP_PASS=your_brevo_smtp_key
+SMTP_FROM="Smart Portal" <your_verified_sender_email>
 ```
 
 After deployment, Render will provide a backend URL similar to:
@@ -527,14 +564,16 @@ VITE_API_BASE_URL=https://your-render-backend.onrender.com/api
 VITE_SOCKET_URL=https://your-render-backend.onrender.com
 ```
 
-After the frontend URL is available, update backend `CLIENT_URL` and `CLIENT_URLS` on Render. Configure SMTP variables on the backend host; Vercel frontend variables do not configure email. For Gmail, use a Google App Password with 2-Step Verification enabled, not the normal account password.
+After the frontend URL is available, set both backend `CLIENT_URL` and `CLIENT_URLS` on Render to the exact Vercel origin, with no trailing slash. For example, this screenshot's origin is `https://smart-team-project-management-porta.vercel.app`. `CLIENT_URLS` can contain comma-separated origins if you also use a Vercel preview domain. Save the Render environment changes and redeploy/restart the backend. Configure SMTP variables on the backend host; Vercel frontend variables do not configure email. For Gmail, use a Google App Password with 2-Step Verification enabled, not the normal account password.
 
 ## Testing Checklist
 
 Use this checklist before deployment:
 
-- Register a user
-- Login/logout
+- Send signup OTP and register a user
+- Login with password
+- Login with email OTP
+- Logout
 - Create organization
 - Create department
 - Add department members

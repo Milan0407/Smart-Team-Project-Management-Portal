@@ -112,11 +112,9 @@ const AppLayout = () => {
     const refreshToken = localStorage.getItem("refreshToken");
 
     if (refreshToken) {
-      try {
-        await logout(refreshToken).unwrap();
-      } catch (err) {
+      logout(refreshToken).unwrap().catch((err) => {
         console.error("Failed to revoke current session during logout", err);
-      }
+      });
     }
 
     dispatch(clearCredentials());

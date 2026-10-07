@@ -7,6 +7,21 @@ const ApiResponse = require(
 );
 
 class AuthController {
+  async sendRegisterOtp(req, res) {
+    const result =
+      await AuthService.sendRegisterOtp(
+        req.body.email
+      );
+
+    return res.json(
+      new ApiResponse({
+        message:
+          "OTP sent successfully",
+        data: result,
+      })
+    );
+  }
+
   async register(req, res) {
     const result =
       await AuthService.register(
@@ -39,6 +54,50 @@ class AuthController {
   async login(req, res) {
     const result =
       await AuthService.login(
+        req.body,
+        {
+          deviceInfo: {
+            userAgent:
+              req.headers[
+                "user-agent"
+              ] || null,
+          },
+
+          ipAddress:
+            req.ip ||
+            req.socket
+              ?.remoteAddress ||
+            null,
+        }
+      );
+
+    return res.json(
+      new ApiResponse({
+        message:
+          "Login successful",
+        data: result,
+      })
+    );
+  }
+
+  async sendLoginOtp(req, res) {
+    const result =
+      await AuthService.sendLoginOtp(
+        req.body.email
+      );
+
+    return res.json(
+      new ApiResponse({
+        message:
+          "Login OTP sent successfully",
+        data: result,
+      })
+    );
+  }
+
+  async loginWithOtp(req, res) {
+    const result =
+      await AuthService.loginWithOtp(
         req.body,
         {
           deviceInfo: {

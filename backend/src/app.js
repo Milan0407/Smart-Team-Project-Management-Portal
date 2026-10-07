@@ -107,6 +107,7 @@ app.get("/health", (req, res) => {
 app.use(
   "/api/auth",
   rateLimit({
+    keyPrefix: "auth",
     windowMs: 15 * 60 * 1000,
     max: 50,
     message: "Too many auth requests. Please wait and try again.",

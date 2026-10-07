@@ -9,11 +9,32 @@ export const authApiSlice = apiSlice.injectEndpoints({
         body: credentials,
       }),
     }),
+    sendLoginOtp: builder.mutation({
+      query: (emailData) => ({
+        url: "/auth/login/send-otp",
+        method: "POST",
+        body: emailData,
+      }),
+    }),
+    loginWithOtp: builder.mutation({
+      query: (credentials) => ({
+        url: "/auth/login/otp",
+        method: "POST",
+        body: credentials,
+      }),
+    }),
     register: builder.mutation({
       query: (userData) => ({
         url: "/auth/register",
         method: "POST",
         body: userData,
+      }),
+    }),
+    sendRegisterOtp: builder.mutation({
+      query: (emailData) => ({
+        url: "/auth/register/send-otp",
+        method: "POST",
+        body: emailData,
       }),
     }),
     logout: builder.mutation({
@@ -62,7 +83,10 @@ export const authApiSlice = apiSlice.injectEndpoints({
 
 export const {
   useLoginMutation,
+  useSendLoginOtpMutation,
+  useLoginWithOtpMutation,
   useRegisterMutation,
+  useSendRegisterOtpMutation,
   useLogoutMutation,
   useGetCurrentUserQuery,
   useChangePasswordMutation,

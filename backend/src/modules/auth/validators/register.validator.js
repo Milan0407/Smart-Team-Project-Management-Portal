@@ -15,6 +15,13 @@ const registerSchema = Joi.object({
     .min(8)
     .max(128)
     .required(),
+
+  otp: Joi.string()
+    .pattern(/^\d{6}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "OTP must be a 6 digit code",
+    }),
 });
 
 const validateRegister = (data) =>

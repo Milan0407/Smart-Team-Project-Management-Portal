@@ -18,6 +18,10 @@ const asyncHandler = require(
   "../../../shared/middleware/asyncHandler.middleware"
 );
 
+const rateLimit = require(
+  "../../../shared/middleware/rateLimit.middleware"
+);
+
 const {
   validateRegister,
 } = require(
@@ -25,9 +29,22 @@ const {
 );
 
 const {
+  validateSendRegisterOtp,
+} = require(
+  "../validators/sendRegisterOtp.validator"
+);
+
+const {
   validateLogin,
 } = require(
   "../validators/login.validator"
+);
+
+const {
+  validateSendLoginOtp,
+  validateLoginWithOtp,
+} = require(
+  "../validators/loginOtp.validator"
 );
 
 const {
@@ -55,6 +72,25 @@ const {
 */
 
 router.post(
+  "/register/send-otp",
+  rateLimit({
+    keyPrefix: "register-otp",
+    keyGenerator: (req) =>
+      `${req.ip}:${req.body.email?.toLowerCase() || "unknown"}`,
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message:
+      "Too many OTP requests. Please try again later.",
+  }),
+  validate(validateSendRegisterOtp),
+  asyncHandler(
+    authController.sendRegisterOtp.bind(
+      authController
+    )
+  )
+);
+
+router.post(
   "/register",
   validate(validateRegister),
   asyncHandler(
@@ -69,6 +105,35 @@ router.post(
   validate(validateLogin),
   asyncHandler(
     authController.login.bind(
+      authController
+    )
+  )
+);
+
+router.post(
+  "/login/send-otp",
+  rateLimit({
+    keyPrefix: "login-otp",
+    keyGenerator: (req) =>
+      `${req.ip}:${req.body.email?.toLowerCase() || "unknown"}`,
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message:
+      "Too many OTP requests. Please try again later.",
+  }),
+  validate(validateSendLoginOtp),
+  asyncHandler(
+    authController.sendLoginOtp.bind(
+      authController
+    )
+  )
+);
+
+router.post(
+  "/login/otp",
+  validate(validateLoginWithOtp),
+  asyncHandler(
+    authController.loginWithOtp.bind(
       authController
     )
   )

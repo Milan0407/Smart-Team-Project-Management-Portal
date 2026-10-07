@@ -42,9 +42,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           // retry the initial query
           result = await baseQuery(args, api, extraOptions);
         } else {
+          localStorage.removeItem("refreshToken");
           api.dispatch(clearCredentials());
         }
       } catch (err) {
+        localStorage.removeItem("refreshToken");
         api.dispatch(clearCredentials());
       }
     } else {

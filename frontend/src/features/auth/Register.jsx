@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "./authSlice";
-import { useRegisterMutation } from "./authApiSlice";
+import { useRegisterMutation, useSendRegisterOtpMutation } from "./authApiSlice";
 
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -10,16 +10,41 @@ const Register = () => {
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const [register, { isLoading }] = useRegisterMutation();
+  const [sendRegisterOtp, { isLoading: isSendingOtp }] = useSendRegisterOtpMutation();
+
+  const handleSendOtp = async () => {
+    setError(null);
+    setMessage(null);
+
+    if (!email) {
+      setError("Enter your email address first");
+      return;
+    }
+
+    try {
+      const res = await sendRegisterOtp({ email }).unwrap();
+      if (res.success) {
+        setMessage("OTP sent to your email. It expires in 10 minutes.");
+      } else {
+        setError(res.message || "Could not send OTP");
+      }
+    } catch (err) {
+      setError(err?.data?.message || "Could not send OTP. Check your email and try again.");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -27,7 +52,7 @@ const Register = () => {
     }
 
     try {
-      const res = await register({ name, email, password }).unwrap();
+      const res = await register({ name, email, password, otp }).unwrap();
       if (res.success) {
         const { user, accessToken, refreshToken } = res.data;
         dispatch(setCredentials({ accessToken, user }));
@@ -65,6 +90,12 @@ const Register = () => {
           </div>
         )}
 
+        {message && (
+          <div className="p-3 mb-6 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold text-center">
+            {message}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
@@ -84,13 +115,40 @@ const Register = () => {
             <label className="block text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
               Email Address
             </label>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="min-w-0 flex-1 px-4 py-2.5 rounded-xl bg-slate-950/65 border border-slate-800/80 text-slate-100 text-sm focus:border-primary focus:ring-1 focus:ring-primary/40 outline-none transition-all placeholder:text-slate-500 shadow-inner"
+                placeholder="john@company.com"
+              />
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={isSendingOtp}
+                className="shrink-0 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs transition-all disabled:opacity-50"
+              >
+                {isSendingOtp ? "Sending..." : "Send OTP"}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+              Email OTP
+            </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
               required
               className="w-full px-4 py-2.5 rounded-xl bg-slate-950/65 border border-slate-800/80 text-slate-100 text-sm focus:border-primary focus:ring-1 focus:ring-primary/40 outline-none transition-all placeholder:text-slate-500 shadow-inner"
-              placeholder="john@company.com"
+              placeholder="6 digit code"
             />
           </div>
 

@@ -2,8 +2,18 @@ const userRepository = require(
   "../repositories/user.repository"
 );
 
+const crypto = require("crypto");
+
 const refreshTokenRepository = require(
   "../repositories/refreshToken.repository"
+);
+
+const emailOtpRepository = require(
+  "../repositories/emailOtp.repository"
+);
+
+const emailService = require(
+  "../../../shared/services/email.service"
 );
 
 const {
@@ -29,11 +39,249 @@ const NotFoundError = require(
   "../../../shared/errors/NotFoundError"
 );
 
+const ValidationError = require(
+  "../../../shared/errors/ValidationError"
+);
+
+const OTP_PURPOSE_REGISTER = "register";
+const OTP_PURPOSE_LOGIN = "login";
+const OTP_TTL_MINUTES = 10;
+const OTP_MAX_ATTEMPTS = 5;
+
+function generateOtp() {
+  return crypto
+    .randomInt(100000, 1000000)
+    .toString();
+}
+
 class AuthService {
+  async createSession(user, sessionMeta) {
+    const payload = {
+      id: user._id,
+      email: user.email,
+    };
+
+    const accessToken =
+      generateAccessToken(payload);
+
+    const refreshToken =
+      generateRefreshToken(payload);
+
+    const tokenHash =
+      await hashValue(refreshToken);
+
+    await refreshTokenRepository.create({
+      userId: user._id,
+      tokenHash,
+
+      deviceInfo: {
+        userAgent:
+          sessionMeta?.deviceInfo
+            ?.userAgent || null,
+      },
+
+      ipAddress:
+        sessionMeta?.ipAddress ||
+        null,
+
+      expiresAt: new Date(
+        Date.now() +
+          30 * 24 * 60 * 60 * 1000
+      ),
+    });
+
+    return {
+      user,
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  async sendRegisterOtp(email) {
+    const exists =
+      await userRepository.existsByEmail(
+        email
+      );
+
+    if (exists) {
+      throw new ConflictError(
+        "Email already registered"
+      );
+    }
+
+    const otp = generateOtp();
+    const otpHash = await hashValue(otp);
+
+    await emailOtpRepository.create({
+      email,
+      purpose: OTP_PURPOSE_REGISTER,
+      otpHash,
+      expiresAt: new Date(
+        Date.now() +
+          OTP_TTL_MINUTES * 60 * 1000
+      ),
+    });
+
+    await emailService.sendRegisterOtpEmail(
+      email,
+      otp
+    );
+
+    return {
+      email,
+      expiresInMinutes:
+        OTP_TTL_MINUTES,
+    };
+  }
+
+  async sendLoginOtp(email) {
+    const user =
+      await userRepository.findByEmail(
+        email
+      );
+
+    if (!user || !user.isActive) {
+      throw new AuthError(
+        "Account not found or disabled"
+      );
+    }
+
+    const otp = generateOtp();
+    const otpHash = await hashValue(otp);
+
+    await emailOtpRepository.create({
+      email,
+      purpose: OTP_PURPOSE_LOGIN,
+      otpHash,
+      expiresAt: new Date(
+        Date.now() +
+          OTP_TTL_MINUTES * 60 * 1000
+      ),
+    });
+
+    await emailService.sendLoginOtpEmail(
+      email,
+      otp
+    );
+
+    return {
+      email,
+      expiresInMinutes:
+        OTP_TTL_MINUTES,
+    };
+  }
+
+  async verifyRegisterOtp(email, otp) {
+    const otpRecord =
+      await emailOtpRepository.findLatest(
+        email,
+        OTP_PURPOSE_REGISTER
+      );
+
+    if (!otpRecord) {
+      throw new ValidationError(
+        "Please request an OTP before registering"
+      );
+    }
+
+    if (otpRecord.expiresAt <= new Date()) {
+      await emailOtpRepository.deleteById(
+        otpRecord._id
+      );
+      throw new ValidationError(
+        "OTP expired. Please request a new code"
+      );
+    }
+
+    if (
+      otpRecord.attempts >=
+      OTP_MAX_ATTEMPTS
+    ) {
+      await emailOtpRepository.deleteById(
+        otpRecord._id
+      );
+      throw new ValidationError(
+        "Too many incorrect OTP attempts. Please request a new code"
+      );
+    }
+
+    const valid = await compareHash(
+      otp,
+      otpRecord.otpHash
+    );
+
+    if (!valid) {
+      await emailOtpRepository.incrementAttempts(
+        otpRecord._id
+      );
+      throw new ValidationError(
+        "Invalid OTP"
+      );
+    }
+
+    await emailOtpRepository.deleteById(
+      otpRecord._id
+    );
+  }
+
+  async verifyLoginOtp(email, otp) {
+    const otpRecord =
+      await emailOtpRepository.findLatest(
+        email,
+        OTP_PURPOSE_LOGIN
+      );
+
+    if (!otpRecord) {
+      throw new ValidationError(
+        "Please request an OTP before logging in"
+      );
+    }
+
+    if (otpRecord.expiresAt <= new Date()) {
+      await emailOtpRepository.deleteById(
+        otpRecord._id
+      );
+      throw new ValidationError(
+        "OTP expired. Please request a new code"
+      );
+    }
+
+    if (
+      otpRecord.attempts >=
+      OTP_MAX_ATTEMPTS
+    ) {
+      await emailOtpRepository.deleteById(
+        otpRecord._id
+      );
+      throw new ValidationError(
+        "Too many incorrect OTP attempts. Please request a new code"
+      );
+    }
+
+    const valid = await compareHash(
+      otp,
+      otpRecord.otpHash
+    );
+
+    if (!valid) {
+      await emailOtpRepository.incrementAttempts(
+        otpRecord._id
+      );
+      throw new ValidationError(
+        "Invalid OTP"
+      );
+    }
+
+    await emailOtpRepository.deleteById(
+      otpRecord._id
+    );
+  }
+
   async register({
   name,
   email,
   password,
+  otp,
 },
 sessionMeta
 ) {
@@ -48,52 +296,23 @@ sessionMeta
     );
   }
 
+  await this.verifyRegisterOtp(
+    email,
+    otp
+  );
+
   const user =
     await userRepository.create({
       name,
       email,
       passwordHash: password,
+      isVerified: true,
     });
 
-  const payload = {
-    id: user._id,
-    email: user.email,
-  };
-
-  const accessToken =
-    generateAccessToken(payload);
-
-  const refreshToken =
-    generateRefreshToken(payload);
-
-  const tokenHash =
-    await hashValue(refreshToken);
-
-await refreshTokenRepository.create({
-  userId: user._id,
-  tokenHash,
-
-  deviceInfo: {
-    userAgent:
-      sessionMeta?.deviceInfo
-        ?.userAgent || null,
-  },
-
-  ipAddress:
-    sessionMeta?.ipAddress ||
-    null,
-
-  expiresAt: new Date(
-    Date.now() +
-      30 * 24 * 60 * 60 * 1000
-  ),
-});
-
-  return {
+  return this.createSession(
     user,
-    accessToken,
-    refreshToken,
-  };
+    sessionMeta
+  );
 }
 
   async login({
@@ -129,48 +348,52 @@ sessionMeta
     );
   }
 
-  const payload = {
-    id: user._id,
-    email: user.email,
-  };
-
-  const accessToken =
-    generateAccessToken(payload);
-
-  const refreshToken =
-    generateRefreshToken(payload);
-
-  const tokenHash =
-    await hashValue(refreshToken);
-
-await refreshTokenRepository.create({
-  userId: user._id,
-  tokenHash,
-
-  deviceInfo: {
-    userAgent:
-      sessionMeta?.deviceInfo
-        ?.userAgent || null,
-  },
-
-  ipAddress:
-    sessionMeta?.ipAddress ||
-    null,
-
-    expiresAt: new Date(
-    Date.now() +
-      30 * 24 * 60 * 60 * 1000
-  ),
-});
   await userRepository.updateLastSeen(
     user._id
   );
 
-  return {
+  return this.createSession(
     user,
-    accessToken,
-    refreshToken,
-  };
+    sessionMeta
+  );
+}
+
+async loginWithOtp({
+  email,
+  otp,
+},
+sessionMeta
+) {
+  const user =
+    await userRepository.findByEmail(
+      email
+    );
+
+  if (!user) {
+    throw new AuthError(
+      "Account not found"
+    );
+  }
+
+  if (!user.isActive) {
+    throw new AuthError(
+      "Account is disabled"
+    );
+  }
+
+  await this.verifyLoginOtp(
+    email,
+    otp
+  );
+
+  await userRepository.updateLastSeen(
+    user._id
+  );
+
+  return this.createSession(
+    user,
+    sessionMeta
+  );
 }
 
  async refreshToken(refreshTokenValue) {
