@@ -78,7 +78,7 @@ router.post(
     keyGenerator: (req) =>
       `${req.ip}:${req.body.email?.toLowerCase() || "unknown"}`,
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    max: 10,
     message:
       "Too many OTP requests. Please try again later.",
   }),
@@ -117,7 +117,7 @@ router.post(
     keyGenerator: (req) =>
       `${req.ip}:${req.body.email?.toLowerCase() || "unknown"}`,
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    max: 10,
     message:
       "Too many OTP requests. Please try again later.",
   }),

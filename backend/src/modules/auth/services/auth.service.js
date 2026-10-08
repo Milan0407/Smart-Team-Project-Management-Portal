@@ -140,9 +140,15 @@ class AuthService {
         email
       );
 
-    if (!user || !user.isActive) {
+    if (!user) {
       throw new AuthError(
-        "Account not found or disabled"
+        "Email is not registered. Please sign up first"
+      );
+    }
+
+    if (!user.isActive) {
+      throw new AuthError(
+        "Account is disabled"
       );
     }
 
